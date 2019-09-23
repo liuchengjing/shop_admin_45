@@ -65,6 +65,7 @@ export default {
         axios.post('http://localhost:8888/api/private/v1/login', this.form)
           .then(res => {
             const { meta } = res.data
+            const { data } = res.data
             if (meta.status === 200) {
               // 登录成功，跳转到首页
               // console.log(meta.msg)
@@ -76,6 +77,7 @@ export default {
               })
               // 跳转到首页
               this.$router.push({ name: 'index' })
+              localStorage.setItem('token', data.token)
             } else {
               // 给用户提示，登录失败
               // console.log(meta.msg)
