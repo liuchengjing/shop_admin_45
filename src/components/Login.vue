@@ -94,7 +94,7 @@ export default {
 }
 </script>
 
-<style lang='scss'>
+<style lang='scss' scoped>
   .login{
     background-color: #2d434c;
     width: 100%;
