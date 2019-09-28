@@ -11,7 +11,28 @@
     <el-input placeholder="请输入内容" v-model="query" class="input-with-select">
       <el-button slot="append" icon="el-icon-search" @click="searchUser"></el-button>
     </el-input>
-    <el-button class="addBtn" type="success" plain>添加用户</el-button>
+
+    <el-button @click="dialogFormVisible = true" class="addBtn" type="success" plain>添加用户</el-button>
+    <el-dialog @close='closeDialog' title="添加用户" :visible.sync="dialogFormVisible">
+      <el-form :rules="rules" ref="form" :model="form" label-width="80px">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="form.username" placeholder="请输入用户名"></el-input>
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input type="password" v-model="form.password" placeholder="请输入密码"></el-input>
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="form.email" placeholder="请输入邮箱"></el-input>
+        </el-form-item>
+        <el-form-item label="手机">
+          <el-input v-model="form.mobile" placeholder="请输入电话号码"></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogFormVisible = false">取 消</el-button>
+        <el-button type="primary" @click="addUser">确 定</el-button>
+      </div>
+    </el-dialog>
 
     <!-- 表格 -->
     <el-table :data="userList" style="width: 100%">
@@ -60,6 +81,7 @@
 </template>
 
 <script>
+// import { async } from 'async'
 // import axios from 'axios'
 
 export default {
@@ -72,7 +94,24 @@ export default {
       pagenum: 1,
       pagesize: 4,
       userList: [],
-      total: 0
+      total: 0,
+      dialogFormVisible: false,
+      form: {
+        username: '',
+        password: '',
+        email: '',
+        mobile: ''
+      },
+      rules: {
+        username: [
+          { required: true, message: '请输入用户名', trigger: 'blur' },
+          { min: 3, max: 6, message: '长度在 3 到 6 个字符', trigger: [ 'change', 'blur' ] }
+        ],
+        password: [
+          { required: true, message: '请输入密码', trigger: 'blur' },
+          { min: 3, max: 8, message: '长度在 3 到 8 个字符', trigger: [ 'change', 'blur' ] }
+        ]
+      }
     }
   },
   methods: {
@@ -146,13 +185,38 @@ export default {
 
     // 修改用户状态
     async changeState (row) {
-      const { meta } = await this.$axios.put(`users/${row.id}/state/${row.mg_state}`)
+      const { meta } = await this.$axios.put(
+        `users/${row.id}/state/${row.mg_state}`
+      )
       if (meta.status === 200) {
         this.$message.success(meta.msg)
       } else {
         this.$message.error(meta.msg)
       }
+    },
+
+    // 添加用户
+    async addUser () {
+      try {
+        await this.$refs.form.validate()
+        const { meta } = await this.$axios.post('users', this.form)
+        if (meta.status === 201) {
+          this.$message.success(meta.msg)
+          this.dialogFormVisible = false
+          this.total++
+          this.pagenum = Math.ceil(this.total / this.pagesize)
+          this.getUserList()
+        } else {
+          this.$message.error(meta.msg)
+        }
+      } catch (e) {
+        console.log(e)
+      }
+    },
+    closeDialog () {
+      this.$refs.form.resetFields()
     }
+
   }
 }
 </script>
