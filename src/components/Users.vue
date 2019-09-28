@@ -11,9 +11,9 @@
     <el-input placeholder="请输入内容" v-model="query" class="input-with-select">
       <el-button slot="append" icon="el-icon-search" @click="searchUser"></el-button>
     </el-input>
-
+    <!-- 添加用户 -->
     <el-button @click="dialogFormVisible = true" class="addBtn" type="success" plain>添加用户</el-button>
-    <el-dialog @close='closeDialog' title="添加用户" :visible.sync="dialogFormVisible">
+    <el-dialog @close="closeDialog" title="添加用户" :visible.sync="dialogFormVisible">
       <el-form :rules="rules" ref="form" :model="form" label-width="80px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名"></el-input>
@@ -39,6 +39,7 @@
       <el-table-column prop="username" label="姓名" width="180"></el-table-column>
       <el-table-column prop="email" label="邮箱" width="180"></el-table-column>
       <el-table-column prop="mobile" label="电话"></el-table-column>
+
       <el-table-column label="用户状态">
         <!-- 作用域插槽 -->
         <template v-slot:default="obj">
@@ -52,9 +53,36 @@
           ></el-switch>
         </template>
       </el-table-column>
+
       <el-table-column label="操作">
         <template v-slot:default="obj">
-          <el-button plain size="small" type="primary" icon="el-icon-edit"></el-button>
+
+          <!-- 修改用户 -->
+          <el-button
+            @click="showEditDialog(obj.row)"
+            plain
+            size="small"
+            type="primary"
+            icon="el-icon-edit"
+          ></el-button>
+          <el-dialog title="修改用户" :visible.sync="editDialogFormVisible">
+            <el-form :rules="rules" ref="editForm" :model="editForm" label-width="80px">
+              <el-form-item label="用户名" prop="username">
+                <el-tag type="info">{{ editForm.username }}</el-tag>
+              </el-form-item>
+              <el-form-item label="邮箱" prop="email">
+                <el-input v-model="editForm.email"  placeholder="请输入邮箱"></el-input>
+              </el-form-item>
+              <el-form-item label="手机" prop="mobile">
+                <el-input v-model="editForm.mobile"  placeholder="请输入手机"></el-input>
+              </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+              <el-button @click="editDialogFormVisible = false">取 消</el-button>
+              <el-button @click="editUser" type="primary">确 定</el-button>
+            </div>
+          </el-dialog>
+          <!-- 删除用户 -->
           <el-button
             plain
             size="small"
@@ -62,6 +90,7 @@
             icon="el-icon-delete"
             @click="delUser(obj.row.id)"
           ></el-button>
+          <!-- 分配角色 -->
           <el-button plain size="small" type="success" icon="el-icon-check">分配角色</el-button>
         </template>
       </el-table-column>
@@ -102,14 +131,37 @@ export default {
         email: '',
         mobile: ''
       },
+      editDialogFormVisible: false,
+      editForm: {
+        id: '',
+        username: '',
+        email: '',
+        mobile: ''
+      },
       rules: {
         username: [
           { required: true, message: '请输入用户名', trigger: 'blur' },
-          { min: 3, max: 6, message: '长度在 3 到 6 个字符', trigger: [ 'change', 'blur' ] }
+          {
+            min: 3,
+            max: 6,
+            message: '长度在 3 到 6 个字符',
+            trigger: ['change', 'blur']
+          }
         ],
         password: [
           { required: true, message: '请输入密码', trigger: 'blur' },
-          { min: 3, max: 8, message: '长度在 3 到 8 个字符', trigger: [ 'change', 'blur' ] }
+          {
+            min: 3,
+            max: 8,
+            message: '长度在 3 到 8 个字符',
+            trigger: ['change', 'blur']
+          }
+        ],
+        email: [
+          { type: 'email', message: '请输入正确的邮箱', trigger: ['blur', 'change'] }
+        ],
+        mobile: [
+          { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: ['blur', 'change'] }
         ]
       }
     }
@@ -215,6 +267,35 @@ export default {
     },
     closeDialog () {
       this.$refs.form.resetFields()
+    },
+
+    // 显示修改用户的对话框
+    showEditDialog (row) {
+      this.editDialogFormVisible = true
+      // console.log(row)
+      this.editForm.username = row.username
+      this.editForm.email = row.email
+      this.editForm.mobile = row.mobile
+      this.editForm.id = row.id
+    },
+
+    // 修改用户
+    async editUser () {
+      try {
+        await this.$refs.editForm.validate()
+
+        const { id, email, mobile } = this.editForm
+        const { meta } = await this.$axios.put(`users/${id}`, { email, mobile })
+        if (meta.status === 200) {
+          this.$message.success(meta.msg)
+          this.getUserList()
+          this.editDialogFormVisible = false
+        } else {
+          this.$message.error(meta.msg)
+        }
+      } catch (e) {
+        console.log(e)
+      }
     }
 
   }
