@@ -27,5 +27,8 @@ body,
     border-bottom: 1px solid #ccc;
     margin-bottom: 10px;
   }
+  .el-table {
+    margin-top: 10px;
+  }
 }
 </style>
