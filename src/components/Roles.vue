@@ -22,7 +22,11 @@
             <el-col :span="20">
               <el-row v-for="level2 in level1.children" :key="level2.id" class="level2">
                 <el-col :span="4">
-                  <el-tag type="success" closable @close="delRights(row, level2.id)">{{ level2.authName }}</el-tag>
+                  <el-tag
+                    type="success"
+                    closable
+                    @close="delRights(row, level2.id)"
+                  >{{ level2.authName }}</el-tag>
                   <i class="el-icon-arrow-right"></i>
                 </el-col>
                 <el-col :span="20">
@@ -32,7 +36,7 @@
                     type="warning"
                     class="level3"
                     closable
-                     @close="delRights(row, level3.id)"
+                    @close="delRights(row, level3.id)"
                   >{{ level3.authName }}</el-tag>
                 </el-col>
               </el-row>
@@ -80,10 +84,30 @@
             @click="delrole(obj.row.id)"
           ></el-button>
           <!-- 分配角色 -->
-          <el-button plain size="small" type="success" icon="el-icon-check">分配权限</el-button>
+          <el-button
+            plain
+            size="small"
+            type="success"
+            icon="el-icon-check"
+            @click="showAssignDialog"
+          >分配权限</el-button>
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 分配权限的对话框 -->
+    <el-dialog title="分配权限" :visible.sync="assignVisible" width="40%">
+      <el-tree
+        :data="data"
+        show-checkbox
+        default-expand-all
+        :props="defaultProps"
+      ></el-tree>
+      <span slot="footer">
+        <el-button @click="assignVisible = false">取 消</el-button>
+        <el-button type="primary">分 配</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -91,7 +115,13 @@
 export default {
   data () {
     return {
-      rolesList: []
+      rolesList: [],
+      assignVisible: false,
+      data: [],
+      defaultProps: {
+        children: 'children',
+        label: 'authName'
+      }
     }
   },
 
@@ -112,10 +142,21 @@ export default {
     // 删除角色的指定权限
     async delRights (row, rightId) {
       // console.log(row)
-      const { data, meta } = await this.$axios.delete(`roles/${row.id}/rights/${rightId}`)
+      const { data, meta } = await this.$axios.delete(
+        `roles/${row.id}/rights/${rightId}`
+      )
       if (meta.status === 200) {
         this.$message.success(meta.msg)
         row.children = data
+      } else {
+        this.$message.error(meta.msg)
+      }
+    },
+    async showAssignDialog () {
+      this.assignVisible = true
+      const { meta, data } = await this.$axios.get('rights/tree')
+      if (meta.status === 200) {
+        this.data = data
       } else {
         this.$message.error(meta.msg)
       }
