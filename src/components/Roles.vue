@@ -49,10 +49,9 @@
       <el-table-column prop="roleDesc" label="描述"></el-table-column>
 
       <el-table-column label="操作">
-        <template v-slot:default="obj">
+        <template v-slot:default="{row}">
           <!-- 修改用户 -->
           <el-button
-            @click="showEditDialog(obj.row)"
             plain
             size="small"
             type="primary"
@@ -81,7 +80,6 @@
             size="small"
             type="danger"
             icon="el-icon-delete"
-            @click="delrole(obj.row.id)"
           ></el-button>
           <!-- 分配角色 -->
           <el-button
@@ -89,7 +87,7 @@
             size="small"
             type="success"
             icon="el-icon-check"
-            @click="showAssignDialog"
+            @click="showAssignDialog(row)"
           >分配权限</el-button>
         </template>
       </el-table-column>
@@ -102,10 +100,12 @@
         show-checkbox
         default-expand-all
         :props="defaultProps"
+        ref="tree"
+        node-key="id"
       ></el-tree>
       <span slot="footer">
         <el-button @click="assignVisible = false">取 消</el-button>
-        <el-button type="primary">分 配</el-button>
+        <el-button type="primary" @click="assignRights">分 配</el-button>
       </span>
     </el-dialog>
   </div>
@@ -121,7 +121,8 @@ export default {
       defaultProps: {
         children: 'children',
         label: 'authName'
-      }
+      },
+      roleId: '' // 记录正在授权的角色的id
     }
   },
 
@@ -152,11 +153,44 @@ export default {
         this.$message.error(meta.msg)
       }
     },
-    async showAssignDialog () {
+    // 显示树型权限
+    async showAssignDialog (row) {
+      this.roleId = row.id
       this.assignVisible = true
       const { meta, data } = await this.$axios.get('rights/tree')
       if (meta.status === 200) {
         this.data = data
+        // 回显所有的当前角色已有的权限
+        const ids = []
+        // ids.push(row.children.children.children.id)//这样写是不行的
+        row.children.forEach(l1 => {
+          // l1 就是一个一级权限
+          l1.children.forEach(l2 => {
+            // l2 就是一个二级权限
+            l2.children.forEach(l3 => {
+              // l3 就是一个三级权限
+              // console.log(l3)
+              ids.push(l3.id)
+            })
+          })
+        })
+        this.$refs.tree.setCheckedKeys(ids)
+      } else {
+        this.$message.error(meta.msg)
+      }
+    },
+    // 分配权限
+    async assignRights () {
+      // 获取当前设置的权限的id
+      const ids = this.$refs.tree.getCheckedKeys()
+      const halfs = this.$refs.tree.getHalfCheckedKeys()
+      const rids = [...ids, ...halfs].join(',')// 数组转字符串
+      // 根据获取的分配的权限id,发送ajax请求，进行分配
+      const { meta } = await this.$axios.post(`roles/${this.roleId}/rights`, { rids: rids })
+      if (meta.status === 200) {
+        this.assignVisible = false
+        this.$message.success(meta.msg)
+        this.getRoleList()
       } else {
         this.$message.error(meta.msg)
       }
