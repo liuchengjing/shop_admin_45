@@ -81,6 +81,7 @@
             size="small"
             type="danger"
             icon="el-icon-delete"
+            @click="delRole(row.id, $event)"
           ></el-button>
           <!-- 分配角色 -->
           <el-button
@@ -109,10 +110,12 @@
         <el-button type="primary" @click="assignRights">分 配</el-button>
       </span>
     </el-dialog>
+
   </div>
 </template>
 
 <script>
+// import { async } from 'q'
 export default {
   data () {
     return {
@@ -194,6 +197,37 @@ export default {
         this.getRoleList()
       } else {
         this.$message.error(meta.msg)
+      }
+    },
+    // 删除角色
+    async delRole (id, e) {
+      // 删除时焦点的小bug,目的在于学习事件对象，无参数时，实参默认可以有e,有参数时，需要形参加上$event
+      // e.target 事件源
+      // e.target.blur() // 如果是按钮, 那么bug就解决了
+      // if (e.target.nodeName)
+      // console.log(e.target.nodeName)
+      if (e.target.nodeName === 'BUTTON') {
+        e.target.blur()
+      } else {
+        // 点击的是子元素, 找他爹
+        e.target.parentNode.blur()
+      }
+
+      try {
+        await this.$confirm('您确认要删除吗?', '温馨提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }) // 如果成功，会接着执行下面的代码
+        const { meta } = await this.$axios.delete(`roles/${id}`)
+        if (meta.status === 200) {
+          this.$message.success(meta.msg)
+          this.getRoleList()
+        } else {
+          this.$message.error(meta.msg)
+        }
+      } catch (e) {
+        console.log(e)
       }
     }
   }
