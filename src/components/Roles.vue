@@ -7,8 +7,8 @@
       <el-breadcrumb-item>角色列表</el-breadcrumb-item>
     </el-breadcrumb>
 
-    <!-- 添加按钮 -->
-    <el-button type="success" plain>添加角色</el-button>
+    <!-- 添加角色 -->
+    <el-button type="success" plain @click="addVisible = true">添加角色</el-button>
 
     <!-- 表格 -->
     <el-table :data="rolesList" style="width: 100%">
@@ -52,29 +52,7 @@
       <el-table-column label="操作">
         <template v-slot:default="{row}">
           <!-- 修改用户 -->
-          <el-button
-            plain
-            size="small"
-            type="primary"
-            icon="el-icon-edit"
-          ></el-button>
-          <!-- <el-dialog title="修改用户" :visible.sync="editDialogFormVisible">
-            <el-form :rules="rules" ref="editForm" :model="editForm" label-width="80px">
-              <el-form-item label="用户名" prop="username">
-                <el-tag type="info">{{ editForm.username }}</el-tag>
-              </el-form-item>
-              <el-form-item label="邮箱" prop="email">
-                <el-input v-model="editForm.email"  placeholder="请输入邮箱"></el-input>
-              </el-form-item>
-              <el-form-item label="手机" prop="mobile">
-                <el-input v-model="editForm.mobile"  placeholder="请输入手机"></el-input>
-              </el-form-item>
-            </el-form>
-            <div slot="footer" class="dialog-footer">
-              <el-button @click="editDialogFormVisible = false">取 消</el-button>
-              <el-button @click="editUser" type="primary">确 定</el-button>
-            </div>
-          </el-dialog>-->
+          <el-button plain size="small" type="primary" icon="el-icon-edit" @click="modDialogVisible(row.id)"></el-button>
           <!-- 删除用户 -->
           <el-button
             plain
@@ -111,11 +89,54 @@
       </span>
     </el-dialog>
 
+    <!-- 添加角色的对话框 -->
+    <el-dialog title="添加角色" :visible.sync="addVisible" @close="closeAddDialog">
+      <el-form
+        :model="RuleForm"
+        :rules="Rules"
+        ref="addForm"
+        label-width="100px"
+        class="demo-ruleForm"
+      >
+        <el-form-item label="角色名称" prop="roleName">
+          <el-input v-model="RuleForm.roleName" placeholder="请输入角色名称"></el-input>
+        </el-form-item>
+        <el-form-item label="角色描述" prop="roleDesc">
+          <el-input v-model="RuleForm.roleDesc" placeholder="请输入角色描述"></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="addVisible = false">取 消</el-button>
+        <el-button type="primary" @click="addRole">确 定</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- 修改角色的对话框 -->
+    <el-dialog title="修改角色" :visible.sync="modifyDialogVisible" @close="closeModDialog">
+      <el-form
+        :model="RuleForm"
+        :rules="Rules"
+        ref="modForm"
+        label-width="100px"
+        class="demo-ruleForm"
+      >
+        <el-form-item label="角色名称" prop="roleName">
+          <el-input v-model="RuleForm.roleName" placeholder="请输入角色名称"></el-input>
+        </el-form-item>
+        <el-form-item label="角色描述" prop="roleDesc">
+          <el-input v-model="RuleForm.roleDesc" placeholder="请输入角色描述"></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="modifyDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="modRole">确 定</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-// import { async } from 'q'
+
 export default {
   data () {
     return {
@@ -126,7 +147,22 @@ export default {
         children: 'children',
         label: 'authName'
       },
-      roleId: '' // 记录正在授权的角色的id
+      roleId: '', // 记录正在授权的角色的id
+      addVisible: false,
+      RuleForm: {
+        id: '', // 实际上是roleId
+        roleName: '',
+        roleDesc: ''
+      },
+      Rules: {
+        roleName: [
+          { required: true, message: '请输入角色名称', trigger: ['blur', 'change'] }
+        ],
+        roleDesc: [
+          { required: true, message: '请输入角色描述', trigger: ['blur', 'change'] }
+        ]
+      },
+      modifyDialogVisible: false
     }
   },
 
@@ -188,9 +224,11 @@ export default {
       // 获取当前设置的权限的id
       const ids = this.$refs.tree.getCheckedKeys()
       const halfs = this.$refs.tree.getHalfCheckedKeys()
-      const rids = [...ids, ...halfs].join(',')// 数组转字符串
+      const rids = [...ids, ...halfs].join(',') // 数组转字符串
       // 根据获取的分配的权限id,发送ajax请求，进行分配
-      const { meta } = await this.$axios.post(`roles/${this.roleId}/rights`, { rids: rids })
+      const { meta } = await this.$axios.post(`roles/${this.roleId}/rights`, {
+        rids: rids
+      })
       if (meta.status === 200) {
         this.assignVisible = false
         this.$message.success(meta.msg)
@@ -229,6 +267,55 @@ export default {
       } catch (e) {
         console.log(e)
       }
+    },
+    // 添加角色
+    async addRole () {
+      const { meta } = await this.$axios.post('roles', {
+        roleName: this.RuleForm.roleName,
+        roleDesc: this.RuleForm.roleDesc
+      })
+      if (meta.status === 201) {
+        this.$message.success(meta.msg)
+        this.addVisible = false
+        this.getRoleList()
+      } else {
+        this.$message.error(meta.msg)
+      }
+    },
+    // 关闭添加角色的对话框
+    closeAddDialog () {
+      this.$refs.addForm.resetFields()
+    },
+    // 显示修改角色的对话框
+    async modDialogVisible (id) {
+      this.modifyDialogVisible = true
+      const { data, meta } = await this.$axios.get(`roles/${id}`)
+      if (meta.status === 200) {
+        this.RuleForm.roleName = data.roleName
+        this.RuleForm.roleDesc = data.roleDesc
+        this.RuleForm.id = id
+      } else {
+        this.$message.error(meta.msg)
+      }
+    },
+    // 修改角色
+    async modRole () {
+      const { meta } = await this.$axios.put(`roles/${this.RuleForm.id}`, {
+        roleName: this.RuleForm.roleName,
+        roleDesc: this.RuleForm.roleDesc
+      })
+      if (meta.status === 200) {
+        this.$message.success('修改成功')
+        this.modifyDialogVisible = false
+        this.getRoleList()
+      } else {
+        this.$message.error(meta.msg)
+      }
+    },
+    // 关闭修改角色的对话框
+    closeModDialog () {
+      this.$refs.modForm.resetFields()
+      this.RuleForm.id = ''
     }
   }
 }
@@ -251,7 +338,7 @@ export default {
     .noRights {
       // margin: 0 auto
       text-align: center;
-      color: #F56C6C
+      color: #f56c6c;
     }
   }
 }
