@@ -14,6 +14,7 @@
     <el-table :data="rolesList" style="width: 100%">
       <el-table-column type="expand">
         <template v-slot:default="{ row }">
+          <p v-if="row.children.length===0" class="noRights">暂无权限</p>
           <el-row v-for="level1 in row.children" :key="level1.id" class="level1">
             <el-col :span="4">
               <el-tag closable @close="delRights(row, level1.id)">{{ level1.authName }}</el-tag>
@@ -212,6 +213,11 @@ export default {
     .level3 {
       margin-right: 5px;
       margin-bottom: 5px;
+    }
+    .noRights {
+      // margin: 0 auto
+      text-align: center;
+      color: #F56C6C
     }
   }
 }
