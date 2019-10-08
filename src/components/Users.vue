@@ -13,6 +13,7 @@
     </el-input>
     <!-- 添加用户 -->
     <el-button @click="dialogFormVisible = true" class="addBtn" type="success" plain>添加用户</el-button>
+    <!-- 添加用户的对话框 -->
     <el-dialog @close="closeDialog" title="添加用户" :visible.sync="dialogFormVisible">
       <el-form :rules="rules" ref="form" :model="form" label-width="80px">
         <el-form-item label="用户名" prop="username">
@@ -56,7 +57,6 @@
 
       <el-table-column label="操作">
         <template v-slot:default="obj">
-
           <!-- 修改用户 -->
           <el-button
             @click="showEditDialog(obj.row)"
@@ -65,16 +65,17 @@
             type="primary"
             icon="el-icon-edit"
           ></el-button>
+          <!-- 修改用户的对话框 -->
           <el-dialog title="修改用户" :visible.sync="editDialogFormVisible">
             <el-form :rules="rules" ref="editForm" :model="editForm" label-width="80px">
               <el-form-item label="用户名" prop="username">
                 <el-tag type="info">{{ editForm.username }}</el-tag>
               </el-form-item>
               <el-form-item label="邮箱" prop="email">
-                <el-input v-model="editForm.email"  placeholder="请输入邮箱"></el-input>
+                <el-input v-model="editForm.email" placeholder="请输入邮箱"></el-input>
               </el-form-item>
               <el-form-item label="手机" prop="mobile">
-                <el-input v-model="editForm.mobile"  placeholder="请输入手机"></el-input>
+                <el-input v-model="editForm.mobile" placeholder="请输入手机"></el-input>
               </el-form-item>
             </el-form>
             <div slot="footer" class="dialog-footer">
@@ -90,8 +91,36 @@
             icon="el-icon-delete"
             @click="delUser(obj.row.id)"
           ></el-button>
-          <!-- 分配角色 -->
-          <el-button plain size="small" type="success" icon="el-icon-check">分配角色</el-button>
+          <!-- 分配角色给用户 -->
+          <el-button
+            plain
+            size="small"
+            type="success"
+            icon="el-icon-check"
+            @click="showAssignDialog(obj.row)"
+          >分配角色</el-button>
+          <!-- 分配角色给用户的对话框 -->
+          <el-dialog title="分配角色" :visible.sync="assignDialogFormVisible">
+            <el-form ref="assignForm" :model="assignForm" label-width="80px">
+              <el-form-item label="用户名" prop="username">
+                <el-tag type="info">{{ assignForm.username }}</el-tag>
+              </el-form-item>
+              <el-form-item label="角色列表">
+                <el-select v-model="assignForm.rid" placeholder="请选择">
+                  <el-option
+                    v-for="item in options"
+                    :label="item.roleName"
+                    :value="item.id"
+                    :key="item.id"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+              <el-button @click="assignDialogFormVisible = false">取 消</el-button>
+              <el-button type="primary" @click="assignRole">确 定</el-button>
+            </div>
+          </el-dialog>
         </template>
       </el-table-column>
     </el-table>
@@ -138,6 +167,14 @@ export default {
         email: '',
         mobile: ''
       },
+      assignDialogFormVisible: false,
+      assignForm: {
+        username: '',
+        rid: '', // 记录角色id
+        id: '' // 记录用户id
+      },
+      options: [], // 记录select选择器
+      // value: '', // 记录select选择器
       rules: {
         username: [
           { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -158,10 +195,18 @@ export default {
           }
         ],
         email: [
-          { type: 'email', message: '请输入正确的邮箱', trigger: ['blur', 'change'] }
+          {
+            type: 'email',
+            message: '请输入正确的邮箱',
+            trigger: ['blur', 'change']
+          }
         ],
         mobile: [
-          { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: ['blur', 'change'] }
+          {
+            pattern: /^1[3-9]\d{9}$/,
+            message: '请输入正确的手机号',
+            trigger: ['blur', 'change']
+          }
         ]
       }
     }
@@ -265,6 +310,7 @@ export default {
         console.log(e)
       }
     },
+    // 关闭添加用户的对话框
     closeDialog () {
       this.$refs.form.resetFields()
     },
@@ -285,7 +331,10 @@ export default {
         await this.$refs.editForm.validate()
 
         const { id, email, mobile } = this.editForm
-        const { meta } = await this.$axios.put(`users/${id}`, { email, mobile })
+        const { meta } = await this.$axios.put(`users/${id}`, {
+          email,
+          mobile
+        })
         if (meta.status === 200) {
           this.$message.success(meta.msg)
           this.getUserList()
@@ -296,8 +345,66 @@ export default {
       } catch (e) {
         console.log(e)
       }
-    }
+    },
 
+    // 显示分配角色的对话框
+    async showAssignDialog (row) {
+      if (row.role_name === '超级管理员') {
+        this.$message.error('超级管理员不可操作')
+        return
+      }
+      this.assignDialogFormVisible = true
+      console.log(row)
+      // 回显用户名
+      this.assignForm.username = row.username
+      this.assignForm.id = row.id
+      // 回显角色列表的当前角色
+      // this.value = row.role_name
+      const resUser = await this.$axios.get(`users/${row.id}`)
+      if (resUser.meta.status === 200) {
+        // console.log(resUser.data)
+        const rid = resUser.data.rid
+        // 如果是新增的用户，还没有角色，默认值后台给的是-1
+        this.assignForm.rid = rid === -1 ? '' : rid
+      }
+      // 回显角色列表下拉选择框
+      const { meta, data } = await this.$axios.get('roles')
+      if (meta.status === 200) {
+        // for (let i = 0; i < data.length; i++) {
+        //   const str = {
+        //     value: data[i].id, // 将角色id传给value
+        //     label: data[i].roleName
+        //   }
+        //   this.options.push(str)
+        // }
+        this.options = data
+      } else {
+        this.$message.error(meta.msg)
+      }
+    },
+
+    // 分配角色给用户
+    async assignRole () {
+      const { id, rid } = this.assignForm
+      // 如果没有分配角色，不能提交
+      if (rid === '') {
+        this.$message.error('请分配角色')
+        return
+      }
+      // if (rid === 0) {
+      //   this.$message.error('超级管理员不可操作')
+      //   return
+      // }
+      // 分配角色
+      const { meta } = await this.$axios.put(`users/${id}/role`, { rid })
+      if (meta.status === 200) {
+        this.$message.success(meta.msg)
+        this.assignDialogFormVisible = false
+        this.getUserList()
+      } else {
+        this.$message.error(meta.msg)
+      }
+    }
   }
 }
 </script>
