@@ -17,41 +17,28 @@
     </el-header>
 
     <el-container>
+      <!-- 侧边栏 -->
       <el-aside width="200px">
         <el-menu
           router
           unique-opened
-          default-active="2"
           class="el-menu-vertical-demo"
           background-color="#545c64"
           text-color="#fff"
           active-text-color="#ffd04b"
+          :default-active="defaultActive"
         >
-          <el-submenu index="1">
+          <el-submenu :index="menu.path" v-for="menu in menuList" :key="menu.id">
             <template slot="title">
               <i class="el-icon-location"></i>
-              <span>用户管理</span>
+              <span>{{ menu.authName }}</span>
             </template>
-            <el-menu-item index="/users">
+            <el-menu-item :index="item.path" v-for="item in menu.children" :key="item.id">
               <i class="el-icon-menu"></i>
-              <span slot="title">用户列表</span>
+              <span slot="title">{{ item.authName }}</span>
             </el-menu-item>
           </el-submenu>
 
-          <el-submenu index="2">
-            <template slot="title">
-              <i class="el-icon-location"></i>
-              <span>权限管理</span>
-            </template>
-            <el-menu-item index="/roles">
-              <i class="el-icon-menu"></i>
-              <span slot="title">角色列表</span>
-            </el-menu-item>
-            <el-menu-item index="rights">
-              <i class="el-icon-menu"></i>
-              <span slot="title">权限列表</span>
-            </el-menu-item>
-          </el-submenu>
         </el-menu>
       </el-aside>
 
@@ -59,13 +46,37 @@
       <el-main>
         <router-view></router-view>
       </el-main>
+
     </el-container>
   </el-container>
 </template>
 
 <script>
 export default {
+  data () {
+    return {
+      menuList: []
+    }
+  },
+
+  async created () {
+    const { meta, data } = await this.$axios.get('menus')
+    if (meta.status === 200) {
+      this.menuList = data
+    }
+  },
+
+  computed: {
+    defaultActive () {
+      // this.$router 整个路由对象 this.$router.push
+      // this.$route  当前路由相关的信息 传参, path fullPath
+      // console.log(this.$route)
+      return this.$route.path.slice(1)
+    }
+  },
+
   methods: {
+    // 退出
     logout () {
       this.$confirm('您确定要退出吗?', '温馨提示', {
         confirmButtonText: '确定',
@@ -89,23 +100,14 @@ export default {
           })
         })
     }
-
-    // handleOpen (key, keyPath) {
-    //   console.log(key, keyPath)
-    // },
-
-    // handleClose (key, keyPath) {
-    //   console.log(key, keyPath)
-    // }
   }
 }
 </script>
 
 <style lang='scss' scoped>
-// 头部
 .index {
   height: 100%;
-
+  // 头部
   .el-header {
     background-color: #d8d8d8;
     display: flex;
@@ -140,24 +142,17 @@ export default {
       }
     }
   }
-
+  // 侧边栏
   .el-aside {
     background-color: #545c64;
+    .el-menu {
+      border-right: none;
+    }
   }
-
+  // 主体
   .el-main {
     background-color: #ecf0f1;
   }
 }
 
-// 侧边栏
-.el-aside {
-  .el-menu {
-    border-right: none;
-
-    .el-icon-menu {
-      color: #909399;
-    }
-  }
-}
 </style>
